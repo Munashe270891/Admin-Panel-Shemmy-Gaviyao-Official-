@@ -1,1 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shemmy Gaviyawo Official Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #1a1a2e;
+            --accent-color: #d4af37;
+            --bg-light: #f4f6f9;
+            --white: #ffffff;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --gray: #7f8c8d;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-light);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* Sidebar Styling */
+        .sidebar {
+            width: 260px;
+            background-color: var(--primary-color);
+            color: var(--white);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .sidebar-header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar-header h2 {
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            margin: 0;
+        }
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+        }
+        .sidebar-menu li a {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            color: var(--white);
+            text-decoration: none;
+            transition: 0.3s;
+        }
+        .sidebar-menu li a:hover, .sidebar-menu li.active a {
+            background-color: rgba(212, 175, 55, 0.2);
+            border-left: 4px solid var(--accent-color);
+        }
+        .sidebar-menu li a i {
+            margin-right: 12px;
+            width: 20px;
+            text-align: center;
+        }
+        /* Main Content Area */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .top-navbar {
+            background-color: var(--white);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .container {
+            padding: 30px;
+            max-width: 1000px;
+            margin: auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .panel-section {
+            display: none;
+            background: var(--white);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            margin-bottom: 30px;
+        }
+        .panel-section.active {
+            display: block;
+        }
+        h2.section-title {
+            margin-top: 0;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--bg-light);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        /* Forms Styling */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="file"],
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        .form-group textarea {
+            resize: vertical;
+            height: 120px;
+        }
+        .btn-submit {
+            background-color: var(--accent-color);
+            color: var(--primary-color);
+            border: none;
+            padding: 12px 25px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-submit:hover {
+            opacity: 0.9;
+        }
+        /* Content List Management Table */
+        .content-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .content-table th, .content-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .content-table th {
+            background-color: #f8f9fa;
+            color: var(--primary-color);
+        }
+        .action-btns button {
+            padding: 6px 12px;
+            margin-right: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .btn-edit { background-color: #f39c12; color: white; }
+        .btn-delete { background-color: var(--danger); color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div>
+            <div class="sidebar-header">
+                <h2>Admin Panel</h2>
+                <p style="font-size: 0.8rem; color: #aaa; margin: 5px 0 0 0;">Shemmy Gaviyawo Official</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="active"><a href="#" onclick="switchTab('audio')"><i class="fas fa-podcast"></i> Upload Audio Sermon</a></li>
+                <li><a href="#" onclick="switchTab('video')"><i class="fas fa-video"></i> Upload YouTube Video</a></li>
+                <li><a href="#" onclick="switchTab('devotion')"><i class="fas fa-book-open"></i> Upload Devotion</a></li>
+                <li><a href="#" onclick="switchTab('book')"><i class="fas fa-book"></i> Upload New Book</a></li>
+                <li><a href="#" onclick="switchTab('manage')"><i class="fas fa-list-alt"></i> List of Content</a></li>
+            </ul>
+        </div>
+        <div style="padding: 20px; text-align: center; font-size: 0.8rem; color: #7f8c8d;">
+            Connected to Supabase DB
+        </div>
+    </div>
+
+    <!-- Main Content Panel -->
+    <div class="main-content">
+        <div class="top-navbar">
+            <h3 id="currentDashboardTitle" style="margin: 0; color: var(--primary-color);">Upload Audio Sermon</h3>
+            <div><strong>Welcome, Admin</strong></div>
+        </div>
+
+        <div class="container">
+
+            <!-- 1. Upload Audio Sermon Form -->
+            <section id="audio-section" class="panel-section active">
+                <h2 class="section-title">Upload New Audio Sermon</h2>
+                <form id="audioForm">
+                    <div class="form-group">
+                        <label for="audioFile">Upload Audio File (.mp3)</label>
+                        <input type="file" id="audioFile" accept="audio/*" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="audioImage">Upload Thumbnail / Cover Image</label>
+                        <input type="file" id="audioImage" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label for="audioTitle">Title</label>
+                        <input type="text" id="audioTitle" placeholder="Enter sermon title..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="audioSubtitle">Subtitle / Series Tag</label>
+                        <input type="text" id="audioSubtitle" placeholder="e.g., Sunday Service Series">
+                    </div>
+                    <div class="form-group">
+                        <label for="audioDesc">Description</label>
+                        <textarea id="audioDesc" placeholder="Enter a brief description of the audio message..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-submit">Publish Audio Sermon</button>
+                </form>
+            </section>
+
+            <!-- 2. Upload YouTube Video Form -->
+            <section id="video-section" class="panel-section">
+                <h2 class="section-title">Upload New YouTube Video Link</h2>
+                <form id="videoForm">
+                    <div class="form-group">
+                        <label for="youtubeUrl">YouTube Video Link / Embed URL</label>
+                        <input type="text" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="videoImage">Custom Thumbnail Image (Optional)</label>
+                        <input type="file" id="videoImage" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label for="videoTitle">Title</label>
+                        <input type="text" id="videoTitle" placeholder="Enter video title..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="videoSubtitle">Subtitle / Category</label>
+                        <input type="text" id="videoSubtitle" placeholder="e.g., Prophetic Teaching">
+                    </div>
+                    <div class="form-group">
+                        <label for="videoDesc">Description</label>
+                        <textarea id="videoDesc" placeholder="Enter video message description..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-submit">Publish Video Link</button>
+                </form>
+            </section>
+
+            <!-- 3. Upload a Devotion Form -->
+            <section id="devotion-section" class="panel-section">
+                <h2 class="section-title">Upload New Daily Devotion</h2>
+                <form id="devotionForm">
+                    <div class="form-group">
+                        <label for="devotionImage">Upload Accompanying Image</label>
+                        <input type="file" id="devotionImage" accept="image/*" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="devotionTitle">Title</label>
+                        <input type="text" id="devotionTitle" placeholder="Enter devotion title..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="devotionSubtitle">Subtitle / Theme</label>
+                        <input type="text" id="devotionSubtitle" placeholder="e.g., Walking in Faith">
+                    </div>
+                    <div class="form-group">
+                        <label for="devotionDesc">Content / Description</label>
+                        <textarea id="devotionDesc" placeholder="Write or paste your daily devotional text here..." style="height: 200px;" required></textarea>
+                    </div>
+                    <button type="submit" class="btn-submit">Publish Devotional</button>
+                </form>
+            </section>
+
+            <!-- 4. Upload New Book Form -->
+            <section id="book-section" class="panel-section">
+                <h2 class="section-title">Upload New Published Book</h2>
+                <form id="bookForm">
+                    <div class="form-group">
+                        <label for="bookImage">Upload Book Cover Image</label>
+                        <input type="file" id="bookImage" accept="image/*" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookTitle">Title</label>
+                        <input type="text" id="bookTitle" placeholder="e.g., The Bleeding General" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookSubtitle">Subtitle</label>
+                        <input type="text" id="bookSubtitle" placeholder="e.g., The Cost of Leading in the Midst of Private Pain">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookDesc">Description / Blurb</label>
+                        <textarea id="bookDesc" placeholder="Enter book overview description..." style="height: 150px;" required></textarea>
+                    </div>
+                    <button type="submit" class="btn-submit">Publish Book Record</button>
+                </form>
+            </section>
+
+            <!-- 5. List of Content Management Section -->
+            <section id="manage-section" class="panel-section">
+                <h2 class="section-title">Manage Existing Content</h2>
+                <p style="color: var(--gray);">View, edit, change images, or delete active records linked to the database.</p>
+                
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Title</th>
+                            <th>Subtitle</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contentTableBody">
+                        <!-- Dynamic sample records layout -->
+                        <tr>
+                            <td><span style="background: #e1f5fe; color: #0288d1; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">Book</span></td>
+                            <td>The Bleeding General</td>
+                            <td>The Cost of Leading...</td>
+                            <td class="action-btns">
+                                <button class="btn-edit" onclick="editItem('Book', 'The Bleeding General')"><i class="fas fa-edit"></i> Edit</button>
+                                <button class="btn-delete" onclick="deleteItem('The Bleeding General')"><i class="fas fa-trash"></i> Delete</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span style="background: #e8f5e9; color: #388e3c; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">Audio</span></td>
+                            <td>Latest Sunday Service</td>
+                            <td>Sunday Series</td>
+                            <td class="action-btns">
+                                <button class="btn-edit" onclick="editItem('Audio', 'Latest Sunday Service')"><i class="fas fa-edit"></i> Edit</button>
+                                <button class="btn-delete" onclick="deleteItem('Latest Sunday Service')"><i class="fas fa-trash"></i> Delete</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span style="background: #fff3e0; color: #f57c00; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">Devotion</span></td>
+                            <td>Walking in Faith</td>
+                            <td>Daily Bread</td>
+                            <td class="action-btns">
+                                <button class="btn-edit" onclick="editItem('Devotion', 'Walking in Faith')"><i class="fas fa-edit"></i> Edit</button>
+                                <button class="btn-delete" onclick="deleteItem('Walking in Faith')"><i class="fas fa-trash"></i> Delete</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Simple Tab Switching Script -->
+    <script>
+        function switchTab(tabName) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.panel-section');
+            sections.forEach(sec => sec.classList.remove('active'));
+
+            // Remove active class from menu links
+            const menuLinks = document.querySelectorAll('.sidebar-menu li');
+            menuLinks.forEach(item => item.classList.remove('active'));
+
+            // Show target section & highlight menu
+            document.getElementById(tabName + '-section').classList.add('active');
+            event.currentTarget.parentElement.classList.add('active');
+
+            // Update Top Navbar title heading
+            const titles = {
+                'audio': 'Upload Audio Sermon',
+                'video': 'Upload YouTube Video Link',
+                'devotion': 'Upload Daily Devotion',
+                'book': 'Upload New Book',
+                'manage': 'List of Content Management'
+            };
+            document.getElementById('currentDashboardTitle').innerText = titles[tabName];
+        }
+
+        function editItem(type, title) {
+            alert("Opening editor for " + type + ": " + title + "\n(Here you can update description, title, or change images before saving back to Supabase).");
+        }
+
+        function deleteItem(title) {
+            if(confirm("Are you sure you want to delete '" + title + "' from the database?")) {
+                alert("Item deleted successfully.");
+            }
+        }
+    </script>
+</body>
+</html>
 
