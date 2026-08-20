@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shemmy Gaviyawo Official Admin Panel</title>
-    <link rel="stylesheet" href="style.css">
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -34,6 +33,8 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            transition: transform 0.3s ease;
+            z-index: 1000;
         }
         .sidebar-header {
             padding: 20px;
@@ -50,6 +51,7 @@
             padding: 0;
             margin: 0;
             flex-grow: 1;
+            overflow-y: auto;
         }
         .sidebar-menu li a {
             display: flex;
@@ -68,23 +70,50 @@
             width: 20px;
             text-align: center;
         }
+
         /* Main Content Area */
         .main-content {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            width: 100%;
         }
         .top-navbar {
             background-color: var(--white);
-            padding: 15px 30px;
+            padding: 15px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            gap: 10px;
+            flex-wrap: wrap;
         }
+        .top-navbar h3 {
+            font-size: 1.1rem;
+            margin: 0;
+            color: var(--primary-color);
+        }
+        .admin-badge {
+            background: var(--bg-light);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #333;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .menu-toggle-btn {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            color: var(--primary-color);
+            cursor: pointer;
+            display: none; /* Hidden on desktop */
+        }
+
         .container {
-            padding: 30px;
+            padding: 20px;
             max-width: 1000px;
             margin: auto;
             width: 100%;
@@ -93,7 +122,7 @@
         .panel-section {
             display: none;
             background: var(--white);
-            padding: 25px;
+            padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.02);
             margin-bottom: 30px;
@@ -107,16 +136,19 @@
             border-bottom: 2px solid var(--bg-light);
             padding-bottom: 10px;
             margin-bottom: 20px;
+            font-size: 1.3rem;
         }
+
         /* Forms Styling */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .form-group label {
             display: block;
             font-weight: 600;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             color: #333;
+            font-size: 0.95rem;
         }
         .form-group input[type="text"],
         .form-group input[type="file"],
@@ -127,6 +159,7 @@
             border-radius: 6px;
             box-sizing: border-box;
             font-size: 1rem;
+            background: #fff;
         }
         .form-group textarea {
             resize: vertical;
@@ -141,41 +174,70 @@
             border-radius: 6px;
             cursor: pointer;
             transition: 0.3s;
+            width: 100%;
         }
         .btn-submit:hover {
             opacity: 0.9;
         }
+
         /* Content List Management Table */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
         .content-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
+            min-width: 500px;
         }
         .content-table th, .content-table td {
-            padding: 12px 15px;
+            padding: 12px 10px;
             text-align: left;
             border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
         }
         .content-table th {
             background-color: #f8f9fa;
             color: var(--primary-color);
         }
         .action-btns button {
-            padding: 6px 12px;
-            margin-right: 5px;
+            padding: 6px 10px;
+            margin-right: 4px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
         }
         .btn-edit { background-color: #f39c12; color: white; }
         .btn-delete { background-color: var(--danger); color: white; }
+
+        /* Responsive Breakpoints for Mobile Phones */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+            .sidebar {
+                position: fixed;
+                height: 100%;
+                transform: translateX(-100%);
+            }
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            .menu-toggle-btn {
+                display: block;
+            }
+            .container {
+                padding: 15px;
+            }
+        }
     </style>
 </head>
 <body>
 
     <!-- Sidebar Navigation -->
-    <div class="sidebar">
+    <div class="sidebar" id="appSidebar">
         <div>
             <div class="sidebar-header">
                 <h2>Admin Panel</h2>
@@ -189,7 +251,7 @@
                 <li><a href="#" onclick="switchTab('manage')"><i class="fas fa-list-alt"></i> List of Content</a></li>
             </ul>
         </div>
-        <div style="padding: 20px; text-align: center; font-size: 0.8rem; color: #7f8c8d;">
+        <div style="padding: 15px; text-align: center; font-size: 0.75rem; color: #7f8c8d; border-top: 1px solid rgba(255,255,255,0.05);">
             Connected to Supabase DB
         </div>
     </div>
@@ -197,8 +259,11 @@
     <!-- Main Content Panel -->
     <div class="main-content">
         <div class="top-navbar">
-            <h3 id="currentDashboardTitle" style="margin: 0; color: var(--primary-color);">Upload Audio Sermon</h3>
-            <div><strong>Welcome, Admin</strong></div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="menu-toggle-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <h3 id="currentDashboardTitle">Upload Audio Sermon</h3>
+            </div>
+            <div class="admin-badge"><i class="fas fa-user-shield" style="color: var(--accent-color); margin-right: 5px;"></i> Welcome, Admin</div>
         </div>
 
         <div class="container">
@@ -277,7 +342,7 @@
                     </div>
                     <div class="form-group">
                         <label for="devotionDesc">Content / Description</label>
-                        <textarea id="devotionDesc" placeholder="Write or paste your daily devotional text here..." style="height: 200px;" required></textarea>
+                        <textarea id="devotionDesc" placeholder="Write or paste your daily devotional text here..." style="height: 180px;" required></textarea>
                     </div>
                     <button type="submit" class="btn-submit">Publish Devotional</button>
                 </form>
@@ -292,16 +357,20 @@
                         <input type="file" id="bookImage" accept="image/*" required>
                     </div>
                     <div class="form-group">
+                        <label for="bookPdf">Upload PDF File</label>
+                        <input type="file" id="bookPdf" accept="application/pdf" required>
+                    </div>
+                    <div class="form-group">
                         <label for="bookTitle">Title</label>
                         <input type="text" id="bookTitle" placeholder="e.g., The Bleeding General" required>
                     </div>
                     <div class="form-group">
                         <label for="bookSubtitle">Subtitle</label>
-                        <input type="text" id="bookSubtitle" placeholder="e.g., The Cost of Leading in the Midst of Private Pain">
+                        <input type="text" id="bookSubtitle" placeholder="e.g., The Cost of Leading...">
                     </div>
                     <div class="form-group">
                         <label for="bookDesc">Description / Blurb</label>
-                        <textarea id="bookDesc" placeholder="Enter book overview description..." style="height: 150px;" required></textarea>
+                        <textarea id="bookDesc" placeholder="Enter book overview description..." style="height: 140px;" required></textarea>
                     </div>
                     <button type="submit" class="btn-submit">Publish Book Record</button>
                 </form>
@@ -310,55 +379,61 @@
             <!-- 5. List of Content Management Section -->
             <section id="manage-section" class="panel-section">
                 <h2 class="section-title">Manage Existing Content</h2>
-                <p style="color: var(--gray);">View, edit, change images, or delete active records linked to the database.</p>
+                <p style="color: var(--gray); font-size: 0.9rem;">View, edit details, change images, or delete records linked to your database.</p>
                 
-                <table class="content-table">
-                    <thead>
-                        <tr>
-                            <th>Type</th>
-                            <th>Title</th>
-                            <th>Subtitle</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="contentTableBody">
-                        <!-- Dynamic sample records layout -->
-                        <tr>
-                            <td><span style="background: #e1f5fe; color: #0288d1; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">Book</span></td>
-                            <td>The Bleeding General</td>
-                            <td>The Cost of Leading...</td>
-                            <td class="action-btns">
-                                <button class="btn-edit" onclick="editItem('Book', 'The Bleeding General')"><i class="fas fa-edit"></i> Edit</button>
-                                <button class="btn-delete" onclick="deleteItem('The Bleeding General')"><i class="fas fa-trash"></i> Delete</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><span style="background: #e8f5e9; color: #388e3c; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">Audio</span></td>
-                            <td>Latest Sunday Service</td>
-                            <td>Sunday Series</td>
-                            <td class="action-btns">
-                                <button class="btn-edit" onclick="editItem('Audio', 'Latest Sunday Service')"><i class="fas fa-edit"></i> Edit</button>
-                                <button class="btn-delete" onclick="deleteItem('Latest Sunday Service')"><i class="fas fa-trash"></i> Delete</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><span style="background: #fff3e0; color: #f57c00; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">Devotion</span></td>
-                            <td>Walking in Faith</td>
-                            <td>Daily Bread</td>
-                            <td class="action-btns">
-                                <button class="btn-edit" onclick="editItem('Devotion', 'Walking in Faith')"><i class="fas fa-edit"></i> Edit</button>
-                                <button class="btn-delete" onclick="deleteItem('Walking in Faith')"><i class="fas fa-trash"></i> Delete</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="content-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Title</th>
+                                <th>Subtitle</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contentTableBody">
+                            <tr>
+                                <td><span style="background: #e1f5fe; color: #0288d1; padding: 3px 6px; border-radius: 4px; font-size: 0.75rem;">Book</span></td>
+                                <td>The Bleeding General</td>
+                                <td>The Cost of Leading...</td>
+                                <td class="action-btns">
+                                    <button class="btn-edit" onclick="editItem('Book', 'The Bleeding General')"><i class="fas fa-edit"></i></button>
+                                    <button class="btn-delete" onclick="deleteItem('The Bleeding General')"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><span style="background: #e8f5e9; color: #388e3c; padding: 3px 6px; border-radius: 4px; font-size: 0.75rem;">Audio</span></td>
+                                <td>Latest Sunday Service</td>
+                                <td>Sunday Series</td>
+                                <td class="action-btns">
+                                    <button class="btn-edit" onclick="editItem('Audio', 'Latest Sunday Service')"><i class="fas fa-edit"></i></button>
+                                    <button class="btn-delete" onclick="deleteItem('Latest Sunday Service')"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><span style="background: #fff3e0; color: #f57c00; padding: 3px 6px; border-radius: 4px; font-size: 0.75rem;">Devotion</span></td>
+                                <td>Walking in Faith</td>
+                                <td>Daily Bread</td>
+                                <td class="action-btns">
+                                    <button class="btn-edit" onclick="editItem('Devotion', 'Walking in Faith')"><i class="fas fa-edit"></i></button>
+                                    <button class="btn-delete" onclick="deleteItem('Walking in Faith')"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
         </div>
     </div>
 
-    <!-- Simple Tab Switching Script -->
+    <!-- Script Handling Sidebar toggles & tabs -->
     <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('appSidebar');
+            sidebar.classList.toggle('mobile-open');
+        }
+
         function switchTab(tabName) {
             // Hide all sections
             const sections = document.querySelectorAll('.panel-section');
@@ -371,6 +446,9 @@
             // Show target section & highlight menu
             document.getElementById(tabName + '-section').classList.add('active');
             event.currentTarget.parentElement.classList.add('active');
+
+            // Close mobile sidebar automatically after click
+            document.getElementById('appSidebar').classList.remove('mobile-open');
 
             // Update Top Navbar title heading
             const titles = {
@@ -395,4 +473,3 @@
     </script>
 </body>
 </html>
-
