@@ -1,10 +1,22 @@
+<?php
+require_once '../config.php';
+require_once 'auth.php';
+
+// Fetch all existing entries for the management tab table
+$audioTracks = $pdo->query("SELECT id, title, topic AS subtitle, 'Audio' AS type FROM audio_tracks ORDER BY id DESC")->fetchAll();
+$videos = $pdo->query("SELECT id, title, 'YouTube Video' AS subtitle, 'Video' AS type FROM videos ORDER BY id DESC")->fetchAll();
+$devotionals = $pdo->query("SELECT id, title, badge AS subtitle, 'Devotion' AS type FROM devotionals ORDER BY id DESC")->fetchAll();
+$books = $pdo->query("SELECT id, title, 'Published Book' AS subtitle, 'Book' AS type FROM books ORDER BY id DESC")->fetchAll();
+
+$allContent = array_merge($audioTracks, $videos, $devotionals, $books);
+$activeTab = $_GET['tab'] ?? 'audio';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shemmy Gaviyawo Official Admin Panel</title>
-    <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -25,7 +37,6 @@
             height: 100vh;
             overflow: hidden;
         }
-        /* Sidebar Styling */
         .sidebar {
             width: 260px;
             background-color: var(--primary-color);
@@ -70,8 +81,6 @@
             width: 20px;
             text-align: center;
         }
-
-        /* Main Content Area */
         .main-content {
             flex-grow: 1;
             display: flex;
@@ -102,6 +111,9 @@
             color: #333;
             font-weight: 600;
             white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         .menu-toggle-btn {
             background: none;
@@ -109,9 +121,8 @@
             font-size: 1.3rem;
             color: var(--primary-color);
             cursor: pointer;
-            display: none; /* Hidden on desktop */
+            display: none;
         }
-
         .container {
             padding: 20px;
             max-width: 1000px;
@@ -138,8 +149,6 @@
             margin-bottom: 20px;
             font-size: 1.3rem;
         }
-
-        /* Forms Styling */
         .form-group {
             margin-bottom: 15px;
         }
@@ -179,8 +188,6 @@
         .btn-submit:hover {
             opacity: 0.9;
         }
-
-        /* Content List Management Table */
         .table-responsive {
             width: 100%;
             overflow-x: auto;
@@ -203,34 +210,21 @@
         }
         .action-btns button {
             padding: 6px 10px;
-            margin-right: 4px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.8rem;
         }
-        .btn-edit { background-color: #f39c12; color: white; }
         .btn-delete { background-color: var(--danger); color: white; }
-
-        /* Responsive Breakpoints for Mobile Phones */
         @media (max-width: 768px) {
-            body {
-                flex-direction: column;
-            }
+            body { flex-direction: column; }
             .sidebar {
                 position: fixed;
                 height: 100%;
                 transform: translateX(-100%);
             }
-            .sidebar.mobile-open {
-                transform: translateX(0);
-            }
-            .menu-toggle-btn {
-                display: block;
-            }
-            .container {
-                padding: 15px;
-            }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .menu-toggle-btn { display: block; }
         }
     </style>
 </head>
@@ -244,15 +238,15 @@
                 <p style="font-size: 0.8rem; color: #aaa; margin: 5px 0 0 0;">Shemmy Gaviyawo Official</p>
             </div>
             <ul class="sidebar-menu">
-                <li class="active"><a href="#" onclick="switchTab('audio')"><i class="fas fa-podcast"></i> Upload Audio Sermon</a></li>
-                <li><a href="#" onclick="switchTab('video')"><i class="fas fa-video"></i> Upload YouTube Video</a></li>
-                <li><a href="#" onclick="switchTab('devotion')"><i class="fas fa-book-open"></i> Upload Devotion</a></li>
-                <li><a href="#" onclick="switchTab('book')"><i class="fas fa-book"></i> Upload New Book</a></li>
-                <li><a href="#" onclick="switchTab('manage')"><i class="fas fa-list-alt"></i> List of Content</a></li>
+                <li class="<?php echo $activeTab === 'audio' ? 'active' : ''; ?>"><a href="#" onclick="switchTab('audio')"><i class="fas fa-podcast"></i> Upload Audio Sermon</a></li>
+                <li class="<?php echo $activeTab === 'video' ? 'active' : ''; ?>"><a href="#" onclick="switchTab('video')"><i class="fas fa-video"></i> Upload YouTube Video</a></li>
+                <li class="<?php echo $activeTab === 'devotion' ? 'active' : ''; ?>"><a href="#" onclick="switchTab('devotion')"><i class="fas fa-book-open"></i> Upload Devotion</a></li>
+                <li class="<?php echo $activeTab === 'book' ? 'active' : ''; ?>"><a href="#" onclick="switchTab('book')"><i class="fas fa-book"></i> Upload New Book</a></li>
+                <li class="<?php echo $activeTab === 'manage' ? 'active' : ''; ?>"><a href="#" onclick="switchTab('manage')"><i class="fas fa-list-alt"></i> List of Content</a></li>
             </ul>
         </div>
         <div style="padding: 15px; text-align: center; font-size: 0.75rem; color: #7f8c8d; border-top: 1px solid rgba(255,255,255,0.05);">
-            Connected to Supabase DB
+            Connected to MySQL DB
         </div>
     </div>
 
@@ -263,123 +257,110 @@
                 <button class="menu-toggle-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
                 <h3 id="currentDashboardTitle">Upload Audio Sermon</h3>
             </div>
-            <div class="admin-badge"><i class="fas fa-user-shield" style="color: var(--accent-color); margin-right: 5px;"></i> Welcome, Admin</div>
+            <div class="admin-badge">
+                <span><i class="fas fa-user-shield" style="color: var(--accent-color); margin-right: 5px;"></i> Welcome, Admin</span>
+                <a href="logout.php" style="color: var(--danger); text-decoration: none; font-size: 0.8rem; margin-left: 10px;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
         </div>
 
         <div class="container">
 
-            <!-- 1. Upload Audio Sermon Form -->
-            <section id="audio-section" class="panel-section active">
+            <!-- 1. Audio Form -->
+            <section id="audio-section" class="panel-section <?php echo $activeTab === 'audio' ? 'active' : ''; ?>">
                 <h2 class="section-title">Upload New Audio Sermon</h2>
-                <form id="audioForm">
+                <form action="actions/save-audio.php" method="POST" enctype="multipart/form-data">
                     <div class="form-group">
-                        <label for="audioFile">Upload Audio File (.mp3)</label>
-                        <input type="file" id="audioFile" accept="audio/*" required>
+                        <label>Upload Audio File (.mp3)</label>
+                        <input type="file" name="audioFile" accept="audio/*" required>
                     </div>
                     <div class="form-group">
-                        <label for="audioImage">Upload Thumbnail / Cover Image</label>
-                        <input type="file" id="audioImage" accept="image/*">
+                        <label>Upload Thumbnail / Cover Image</label>
+                        <input type="file" name="audioImage" accept="image/*">
                     </div>
                     <div class="form-group">
-                        <label for="audioTitle">Title</label>
-                        <input type="text" id="audioTitle" placeholder="Enter sermon title..." required>
+                        <label>Title</label>
+                        <input type="text" name="title" placeholder="Enter sermon title..." required>
                     </div>
                     <div class="form-group">
-                        <label for="audioSubtitle">Subtitle / Series Tag</label>
-                        <input type="text" id="audioSubtitle" placeholder="e.g., Sunday Service Series">
+                        <label>Subtitle / Series Tag</label>
+                        <input type="text" name="subtitle" placeholder="e.g., Sunday Service Series">
                     </div>
                     <div class="form-group">
-                        <label for="audioDesc">Description</label>
-                        <textarea id="audioDesc" placeholder="Enter a brief description of the audio message..."></textarea>
+                        <label>Description</label>
+                        <textarea name="description" placeholder="Enter a brief description..."></textarea>
                     </div>
                     <button type="submit" class="btn-submit">Publish Audio Sermon</button>
                 </form>
             </section>
 
-            <!-- 2. Upload YouTube Video Form -->
-            <section id="video-section" class="panel-section">
+            <!-- 2. Video Form -->
+            <section id="video-section" class="panel-section <?php echo $activeTab === 'video' ? 'active' : ''; ?>">
                 <h2 class="section-title">Upload New YouTube Video Link</h2>
-                <form id="videoForm">
+                <form action="actions/save-video.php" method="POST">
                     <div class="form-group">
-                        <label for="youtubeUrl">YouTube Video Link / Embed URL</label>
-                        <input type="text" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." required>
+                        <label>YouTube Video Link / URL</label>
+                        <input type="text" name="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." required>
                     </div>
                     <div class="form-group">
-                        <label for="videoImage">Custom Thumbnail Image (Optional)</label>
-                        <input type="file" id="videoImage" accept="image/*">
-                    </div>
-                    <div class="form-group">
-                        <label for="videoTitle">Title</label>
-                        <input type="text" id="videoTitle" placeholder="Enter video title..." required>
-                    </div>
-                    <div class="form-group">
-                        <label for="videoSubtitle">Subtitle / Category</label>
-                        <input type="text" id="videoSubtitle" placeholder="e.g., Prophetic Teaching">
-                    </div>
-                    <div class="form-group">
-                        <label for="videoDesc">Description</label>
-                        <textarea id="videoDesc" placeholder="Enter video message description..."></textarea>
+                        <label>Title</label>
+                        <input type="text" name="title" placeholder="Enter video title..." required>
                     </div>
                     <button type="submit" class="btn-submit">Publish Video Link</button>
                 </form>
             </section>
 
-            <!-- 3. Upload a Devotion Form -->
-            <section id="devotion-section" class="panel-section">
+            <!-- 3. Devotion Form -->
+            <section id="devotion-section" class="panel-section <?php echo $activeTab === 'devotion' ? 'active' : ''; ?>">
                 <h2 class="section-title">Upload New Daily Devotion</h2>
-                <form id="devotionForm">
+                <form action="actions/save-devotion.php" method="POST" enctype="multipart/form-data">
                     <div class="form-group">
-                        <label for="devotionImage">Upload Accompanying Image</label>
-                        <input type="file" id="devotionImage" accept="image/*" required>
+                        <label>Upload Accompanying Image</label>
+                        <input type="file" name="devotionImage" accept="image/*" required>
                     </div>
                     <div class="form-group">
-                        <label for="devotionTitle">Title</label>
-                        <input type="text" id="devotionTitle" placeholder="Enter devotion title..." required>
+                        <label>Title</label>
+                        <input type="text" name="title" placeholder="Enter devotion title..." required>
                     </div>
                     <div class="form-group">
-                        <label for="devotionSubtitle">Subtitle / Theme</label>
-                        <input type="text" id="devotionSubtitle" placeholder="e.g., Walking in Faith">
+                        <label>Subtitle / Theme</label>
+                        <input type="text" name="subtitle" placeholder="e.g., Walking in Faith">
                     </div>
                     <div class="form-group">
-                        <label for="devotionDesc">Content / Description</label>
-                        <textarea id="devotionDesc" placeholder="Write or paste your daily devotional text here..." style="height: 180px;" required></textarea>
+                        <label>Content / Description</label>
+                        <textarea name="description" placeholder="Write or paste your daily devotional text here..." style="height: 180px;" required></textarea>
                     </div>
                     <button type="submit" class="btn-submit">Publish Devotional</button>
                 </form>
             </section>
 
-            <!-- 4. Upload New Book Form -->
-            <section id="book-section" class="panel-section">
+            <!-- 4. Book Form -->
+            <section id="book-section" class="panel-section <?php echo $activeTab === 'book' ? 'active' : ''; ?>">
                 <h2 class="section-title">Upload New Published Book</h2>
-                <form id="bookForm">
+                <form action="actions/save-book.php" method="POST" enctype="multipart/form-data">
                     <div class="form-group">
-                        <label for="bookImage">Upload Book Cover Image</label>
-                        <input type="file" id="bookImage" accept="image/*" required>
+                        <label>Upload Book Cover Image</label>
+                        <input type="file" name="bookImage" accept="image/*" required>
                     </div>
                     <div class="form-group">
-                        <label for="bookPdf">Upload PDF File</label>
-                        <input type="file" id="bookPdf" accept="application/pdf" required>
+                        <label>Upload PDF File</label>
+                        <input type="file" name="bookPdf" accept="application/pdf" required>
                     </div>
                     <div class="form-group">
-                        <label for="bookTitle">Title</label>
-                        <input type="text" id="bookTitle" placeholder="e.g., The Bleeding General" required>
+                        <label>Title</label>
+                        <input type="text" name="title" placeholder="e.g., The Bleeding General" required>
                     </div>
                     <div class="form-group">
-                        <label for="bookSubtitle">Subtitle</label>
-                        <input type="text" id="bookSubtitle" placeholder="e.g., The Cost of Leading...">
-                    </div>
-                    <div class="form-group">
-                        <label for="bookDesc">Description / Blurb</label>
-                        <textarea id="bookDesc" placeholder="Enter book overview description..." style="height: 140px;" required></textarea>
+                        <label>Description / Blurb</label>
+                        <textarea name="description" placeholder="Enter book overview description..." style="height: 140px;" required></textarea>
                     </div>
                     <button type="submit" class="btn-submit">Publish Book Record</button>
                 </form>
             </section>
 
-            <!-- 5. List of Content Management Section -->
-            <section id="manage-section" class="panel-section">
+            <!-- 5. Content Management Section -->
+            <section id="manage-section" class="panel-section <?php echo $activeTab === 'manage' ? 'active' : ''; ?>">
                 <h2 class="section-title">Manage Existing Content</h2>
-                <p style="color: var(--gray); font-size: 0.9rem;">View, edit details, change images, or delete records linked to your database.</p>
+                <p style="color: var(--gray); font-size: 0.9rem;">View and delete database records instantly.</p>
                 
                 <div class="table-responsive">
                     <table class="content-table">
@@ -391,34 +372,25 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="contentTableBody">
-                            <tr>
-                                <td><span style="background: #e1f5fe; color: #0288d1; padding: 3px 6px; border-radius: 4px; font-size: 0.75rem;">Book</span></td>
-                                <td>The Bleeding General</td>
-                                <td>The Cost of Leading...</td>
-                                <td class="action-btns">
-                                    <button class="btn-edit" onclick="editItem('Book', 'The Bleeding General')"><i class="fas fa-edit"></i></button>
-                                    <button class="btn-delete" onclick="deleteItem('The Bleeding General')"><i class="fas fa-trash"></i></button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><span style="background: #e8f5e9; color: #388e3c; padding: 3px 6px; border-radius: 4px; font-size: 0.75rem;">Audio</span></td>
-                                <td>Latest Sunday Service</td>
-                                <td>Sunday Series</td>
-                                <td class="action-btns">
-                                    <button class="btn-edit" onclick="editItem('Audio', 'Latest Sunday Service')"><i class="fas fa-edit"></i></button>
-                                    <button class="btn-delete" onclick="deleteItem('Latest Sunday Service')"><i class="fas fa-trash"></i></button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><span style="background: #fff3e0; color: #f57c00; padding: 3px 6px; border-radius: 4px; font-size: 0.75rem;">Devotion</span></td>
-                                <td>Walking in Faith</td>
-                                <td>Daily Bread</td>
-                                <td class="action-btns">
-                                    <button class="btn-edit" onclick="editItem('Devotion', 'Walking in Faith')"><i class="fas fa-edit"></i></button>
-                                    <button class="btn-delete" onclick="deleteItem('Walking in Faith')"><i class="fas fa-trash"></i></button>
-                                </td>
-                            </tr>
+                        <tbody>
+                            <?php if (empty($allContent)): ?>
+                                <tr><td colspan="4" style="text-align: center; color: #7f8c8d;">No records found in database yet.</td></tr>
+                            <?php else: ?>
+                                <?php foreach ($allContent as $item): ?>
+                                    <tr>
+                                        <td><span style="background: #e1f5fe; color: #0288d1; padding: 3px 6px; border-radius: 4px; font-size: 0.75rem;"><?php echo htmlspecialchars($item['type']); ?></span></td>
+                                        <td><?php echo htmlspecialchars($item['title']); ?></td>
+                                        <td><?php echo htmlspecialchars($item['subtitle']); ?></td>
+                                        <td class="action-btns">
+                                            <form action="actions/delete-item.php" method="POST" onsubmit="return confirm('Are you sure you want to delete this record?');" style="display:inline;">
+                                                <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                                <input type="hidden" name="type" value="<?php echo strtolower($item['type']); ?>">
+                                                <button type="submit" class="btn-delete"><i class="fas fa-trash"></i> Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -427,30 +399,19 @@
         </div>
     </div>
 
-    <!-- Script Handling Sidebar toggles & tabs -->
     <script>
         function toggleSidebar() {
-            const sidebar = document.getElementById('appSidebar');
-            sidebar.classList.toggle('mobile-open');
+            document.getElementById('appSidebar').classList.toggle('mobile-open');
         }
 
         function switchTab(tabName) {
-            // Hide all sections
-            const sections = document.querySelectorAll('.panel-section');
-            sections.forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.panel-section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.sidebar-menu li').forEach(item => item.classList.remove('active'));
 
-            // Remove active class from menu links
-            const menuLinks = document.querySelectorAll('.sidebar-menu li');
-            menuLinks.forEach(item => item.classList.remove('active'));
-
-            // Show target section & highlight menu
             document.getElementById(tabName + '-section').classList.add('active');
             event.currentTarget.parentElement.classList.add('active');
-
-            // Close mobile sidebar automatically after click
             document.getElementById('appSidebar').classList.remove('mobile-open');
 
-            // Update Top Navbar title heading
             const titles = {
                 'audio': 'Upload Audio Sermon',
                 'video': 'Upload YouTube Video Link',
@@ -459,16 +420,6 @@
                 'manage': 'List of Content Management'
             };
             document.getElementById('currentDashboardTitle').innerText = titles[tabName];
-        }
-
-        function editItem(type, title) {
-            alert("Opening editor for " + type + ": " + title + "\n(Here you can update description, title, or change images before saving back to Supabase).");
-        }
-
-        function deleteItem(title) {
-            if(confirm("Are you sure you want to delete '" + title + "' from the database?")) {
-                alert("Item deleted successfully.");
-            }
         }
     </script>
 </body>
