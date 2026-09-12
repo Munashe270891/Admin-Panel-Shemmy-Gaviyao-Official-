@@ -1,154 +1,263 @@
 <?php
 require_once 'config.php';
 
-// Fetch dynamic data for the website views
-$devotionals = $pdo->query("SELECT * FROM devotionals ORDER BY publish_date DESC LIMIT 5")->fetchAll();
-$videos = $pdo->query("SELECT * FROM videos ORDER BY id DESC LIMIT 6")->fetchAll();
-$audioTracks = $pdo->query("SELECT * FROM audio_tracks ORDER BY publish_date DESC LIMIT 6")->fetchAll();
-$books = $pdo->query("SELECT * FROM books ORDER BY id DESC LIMIT 4")->fetchAll();
-$partner = $pdo->query("SELECT * FROM partnership_content LIMIT 1")->fetch();
+// Handle form submissions directly from root index if posted
+$message = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    
+    if ($action === 'audio') {
+        $title = trim($_POST['title'] ?? '');
+        $topic = trim($_POST['subtitle'] ?? 'Sunday Service');
+        $description = trim($_POST['description'] ?? '');
+        $audioUrl = '';
+        $thumbUrl = '';
+
+        if (isset($_FILES['audioFile']) && $_FILES['audioFile']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = 'uploads/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $fileName = time() . '_' . basename($_FILES['audioFile']['name']);
+            if (move_uploaded_file($_FILES['audioFile']['tmp_name'], $uploadDir . $fileName)) {
+                $audioUrl = 'uploads/' . $fileName;
+            }
+        }
+        if (isset($_FILES['audioImage']) && $_FILES['audioImage']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = 'uploads/';
+            $imgName = time() . '_img_' . basename($_FILES['audioImage']['name']);
+            if (move_uploaded_file($_FILES['audioImage']['tmp_name'], $uploadDir . $imgName)) {
+                $thumbUrl = 'uploads/' . $imgName;
+            }
+        }
+        if (!empty($title) && !empty($audioUrl)) {
+            $stmt = $pdo->prepare("INSERT INTO audio_tracks (title, topic, audio_url, thumbnail_url, publish_date) VALUES (?, ?, ?, ?, CURDATE())");
+            $stmt->execute([$title, $topic, $audioUrl, $thumbUrl]);
+            $message = "Audio sermon successfully uploaded and saved to database!";
+        }
+    } 
+    elseif ($action === 'video') {
+        $title = trim($_POST['title'] ?? '');
+        $youtubeUrl = trim($_POST['youtubeUrl'] ?? '');
+        
+        // Extract YouTube ID
+        $youtubeId = '';
+        if (preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/', $youtubeUrl, $match)) {
+            $youtubeId = $match[1];
+        } else {
+            $youtubeId = $youtubeUrl; // fallback if raw ID is entered
+        }
+
+        if (!empty($title) && !empty($youtubeId)) {
+            $stmt = $pdo->prepare("INSERT INTO videos (title, youtube_id) VALUES (?, ?)");
+            $stmt->execute([$title, $youtubeId]);
+            $message = "Video link successfully saved to database!";
+        }
+    }
+    elseif ($action === 'devotion') {
+        $title = trim($_POST['title'] ?? '');
+        $badge = trim($_POST['subtitle'] ?? '');
+        $content = trim($_POST['description'] ?? '');
+        $imageUrl = '';
+
+        if (isset($_FILES['devotionImage']) && $_FILES['devotionImage']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = 'uploads/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $imgName = time() . '_dev_' . basename($_FILES['devotionImage']['name']);
+            if (move_uploaded_file($_FILES['devotionImage']['tmp_name'], $uploadDir . $imgName)) {
+                $imageUrl = 'uploads/' . $imgName;
+            }
+        }
+
+        if (!empty($title) && !empty($content)) {
+            $stmt = $pdo->prepare("INSERT INTO devotionals (title, badge, content, image_url, publish_date) VALUES (?, ?, ?, ?, CURDATE())");
+            $stmt->execute([$title, $badge, $content, $imageUrl]);
+            $message = "Devotional successfully published to database!";
+        }
+    }
+    elseif ($action === 'book') {
+        $title = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $coverImage = '';
+        $pdfFile = '';
+
+        $uploadDir = 'uploads/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+        if (isset($_FILES['bookImage']) && $_FILES['bookImage']['error'] === UPLOAD_ERR_OK) {
+            $imgName = time() . '_bookimg_' . basename($_FILES['bookImage']['name']);
+            if (move_uploaded_file($_FILES['bookImage']['tmp_name'], $uploadDir . $imgName)) {
+                $coverImage = 'uploads/' . $imgName;
+            }
+        }
+        if (isset($_FILES['bookPdf']) && $_FILES['bookPdf']['error'] === UPLOAD_ERR_OK) {
+            $pdfName = time() . '_' . basename($_FILES['bookPdf']['name']);
+            if (move_uploaded_file($_FILES['bookPdf']['tmp_name'], $uploadDir . $pdfName)) {
+                $pdfFile = 'uploads/' . $pdfName;
+            }
+        }
+
+        if (!empty($title)) {
+            $stmt = $pdo->prepare("INSERT INTO books (title, description, cover_image, pdf_file) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$title, $description, $coverImage, $pdfFile]);
+            $message = "Book record successfully uploaded to database!";
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discipleship Nation | Shemmy Gaviyawo Official</title>
+    <title>Database Content Upload Hub</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --primary: #1a1a2e;
             --accent: #d4af37;
-            --bg: #f8f9fa;
-            --text: #333;
+            --bg: #f4f6f9;
+            --white: #ffffff;
+            --success: #2ecc71;
         }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
-        header { background: var(--primary); color: white; padding: 20px; text-align: center; }
-        header h1 { color: var(--accent); margin: 0 0 5px 0; font-size: 1.8rem; }
-        .container { max-width: 1100px; margin: auto; padding: 20px; }
-        .section-box { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 25px; }
-        h2 { color: var(--primary); border-bottom: 2px solid var(--accent); padding-bottom: 8px; margin-top: 0; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-        .card { background: #fff; border: 1px solid #e1e8ed; border-radius: 6px; padding: 15px; display: flex; flex-direction: column; justify-content: space-between; }
-        .card img { width: 100%; height: 160px; object-fit: cover; border-radius: 4px; margin-bottom: 10px; }
-        .card h3 { margin: 10px 0 5px 0; font-size: 1.1rem; color: var(--primary); }
-        .card p { font-size: 0.9rem; color: #666; flex-grow: 1; }
-        .btn { display: inline-block; background: var(--accent); color: var(--primary); text-decoration: none; padding: 8px 15px; font-weight: bold; border-radius: 4px; text-align: center; margin-top: 10px; }
-        footer { text-align: center; padding: 20px; color: #777; font-size: 0.85rem; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: auto; background: var(--white); padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h1 { color: var(--primary); text-align: center; font-size: 1.5rem; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #777; font-size: 0.9rem; margin-bottom: 25px; }
+        .alert { background: #e8f8f5; color: var(--success); padding: 12px; border-radius: 5px; margin-bottom: 20px; text-align: center; font-weight: bold; border: 1px solid #a3e4d7; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 25px; border-bottom: 2px solid #eee; padding-bottom: 10px; flex-wrap: wrap; justify-content: center; }
+        .tab-btn { background: #e1e8ed; border: none; padding: 10px 15px; cursor: pointer; font-weight: bold; border-radius: 4px; color: var(--primary); transition: 0.2s; }
+        .tab-btn.active, .tab-btn:hover { background: var(--accent); color: var(--primary); }
+        .form-section { display: none; }
+        .form-section.active { display: block; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.95rem; }
+        .form-group input[type="text"], .form-group input[type="file"], .form-group textarea {
+            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 1rem;
+        }
+        .form-group textarea { height: 120px; resize: vertical; }
+        .btn-submit { background: var(--accent); color: var(--primary); border: none; padding: 12px; width: 100%; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+        .btn-submit:hover { opacity: 0.9; }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>Discipleship Nation</h1>
-        <p>Shemmy Gaviyawo Official Portal</p>
-    </header>
+<div class="container">
+    <h1>Database Content Upload Hub</h1>
+    <p class="subtitle">Direct data-entry portal for publishing content to your remote website database</p>
 
-    <div class="container">
-        
-        <!-- Devotionals Section -->
-        <div class="section-box">
-            <h2><i class="fas fa-book-open"></i> Daily Devotionals</h2>
-            <div class="grid">
-                <?php if (empty($devotionals)): ?>
-                    <p>No devotionals published yet.</p>
-                <?php else: ?>
-                    <?php foreach ($devotionals as $dev): ?>
-                        <div class="card">
-                            <?php if (!empty($dev['image_url'])): ?>
-                                <img src="<?php echo htmlspecialchars($dev['image_url']); ?>" alt="Devotion Image">
-                            <?php endif; ?>
-                            <h3><?php echo htmlspecialchars($dev['title']); ?></h3>
-                            <p><?php echo nl2br(htmlspecialchars(substr($dev['content'], 0, 150))); ?>...</p>
-                            <span style="font-size: 0.75rem; color: #888; margin-top: 5px;"><?php echo $dev['publish_date']; ?></span>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </div>
+    <?php if (!empty($message)): ?>
+        <div class="alert"><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($message); ?></div>
+    <?php endif; ?>
 
-        <!-- Videos Section -->
-        <div class="section-box">
-            <h2><i class="fas fa-video"></i> Video Teachings</h2>
-            <div class="grid">
-                <?php if (empty($videos)): ?>
-                    <p>No video links available yet.</p>
-                <?php else: ?>
-                    <?php foreach ($videos as $vid): ?>
-                        <div class="card">
-                            <div style="position:relative; padding-bottom:56.16%; height:0; overflow:hidden;">
-                                <iframe src="https://www.youtube.com/embed/<?php echo htmlspecialchars($vid['youtube_id']); ?>" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;" allowfullscreen></iframe>
-                            </div>
-                            <h3 style="margin-top:15px;"><?php echo htmlspecialchars($vid['title']); ?></h3>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- Audio Sermons Section -->
-        <div class="section-box">
-            <h2><i class="fas fa-podcast"></i> Audio Sermons</h2>
-            <div class="grid">
-                <?php if (empty($audioTracks)): ?>
-                    <p>No audio files uploaded yet.</p>
-                <?php else: ?>
-                    <?php foreach ($audioTracks as $audio): ?>
-                        <div class="card">
-                            <?php if (!empty($audio['thumbnail_url'])): ?>
-                                <img src="<?php echo htmlspecialchars($audio['thumbnail_url']); ?>" alt="Audio Cover">
-                            <?php endif; ?>
-                            <h3><?php echo htmlspecialchars($audio['title']); ?></h3>
-                            <p style="font-size: 0.8rem; color: #555;">Topic: <?php echo htmlspecialchars($audio['topic']); ?></p>
-                            <?php if (!empty($audio['audio_url'])): ?>
-                                <audio controls style="width:100%; margin-top:10px;">
-                                    <source src="<?php echo htmlspecialchars($audio['audio_url']); ?>" type="audio/mpeg">
-                                    Your browser does not support the audio element.
-                                </audio>
-                            <?php endif; ?>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- Books Section -->
-        <div class="section-box">
-            <h2><i class="fas fa-book"></i> Books & Publications</h2>
-            <div class="grid">
-                <?php if (empty($books)): ?>
-                    <p>No books uploaded yet.</p>
-                <?php else: ?>
-                    <?php foreach ($books as $bk): ?>
-                        <div class="card">
-                            <?php if (!empty($bk['cover_image'])): ?>
-                                <img src="<?php echo htmlspecialchars($bk['cover_image']); ?>" alt="Book Cover">
-                            <?php endif; ?>
-                            <h3><?php echo htmlspecialchars($bk['title']); ?></h3>
-                            <p><?php echo nl2br(htmlspecialchars($bk['description'])); ?></p>
-                            <?php if (!empty($bk['pdf_file'])): ?>
-                                <a href="<?php echo htmlspecialchars($bk['pdf_file']); ?>" class="btn" target="_blank"><i class="fas fa-download"></i> Download PDF</a>
-                            <?php endif; ?>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- Partnership Section -->
-        <?php if ($partner): ?>
-        <div class="section-box" style="background: var(--primary); color: white; text-align: center;">
-            <h2 style="color: var(--accent); border-color: rgba(212,175,55,0.3);"><?php echo htmlspecialchars($partner['title']); ?></h2>
-            <blockquote style="font-style: italic; color: #d4af37; font-size: 1.1rem;"><?php echo htmlspecialchars($partner['verse']); ?></blockquote>
-            <p style="max-width: 700px; margin: 15px auto; line-height: 1.6;"><?php echo nl2br(htmlspecialchars($partner['body'])); ?></p>
-        </div>
-        <?php endif; ?>
-
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('audio', event)"><i class="fas fa-podcast"></i> Audio Sermon</button>
+        <button class="tab-btn" onclick="switchTab('video', event)"><i class="fas fa-video"></i> YouTube Video</button>
+        <button class="tab-btn" onclick="switchTab('devotion', event)"><i class="fas fa-book-open"></i> Devotional / Blog</button>
+        <button class="tab-btn" onclick="switchTab('book', event)"><i class="fas fa-book"></i> Book & PDF</button>
     </div>
 
-    <footer>
-        <p>&copy; <?php echo date('Y'); ?> Discipleship Nation. Powered by Upnode Technologies.</p>
-    </footer>
+    <!-- 1. Audio Form -->
+    <div id="audio-form" class="form-section active">
+        <form action="index.php" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="action" value="audio">
+            <div class="form-group">
+                <label>Audio File (.mp3)</label>
+                <input type="file" name="audioFile" accept="audio/*" required>
+            </div>
+            <div class="form-group">
+                <label>Thumbnail Cover Image</label>
+                <input type="file" name="audioImage" accept="image/*">
+            </div>
+            <div class="form-group">
+                <label>Sermon Title</label>
+                <input type="text" name="title" placeholder="Enter title..." required>
+            </div>
+            <div class="form-group">
+                <label>Topic / Subtitle / Series Tag</label>
+                <input type="text" name="subtitle" placeholder="e.g., Sunday Service Series">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" placeholder="Enter details..."></textarea>
+            </div>
+            <button type="submit" class="btn-submit">Save Audio to Database</button>
+        </form>
+    </div>
+
+    <!-- 2. Video Form -->
+    <div id="video-form" class="form-section">
+        <form action="index.php" method="POST">
+            <input type="hidden" name="action" value="video">
+            <div class="form-group">
+                <label>YouTube Video Link / URL</label>
+                <input type="text" name="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." required>
+            </div>
+            <div class="form-group">
+                <label>Video Title</label>
+                <input type="text" name="title" placeholder="Enter video title..." required>
+            </div>
+            <button type="submit" class="btn-submit">Save Video to Database</button>
+        </form>
+    </div>
+
+    <!-- 3. Devotion Form -->
+    <div id="devotion-form" class="form-section">
+        <form action="index.php" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="action" value="devotion">
+            <div class="form-group">
+                <label>Accompanying Image</label>
+                <input type="file" name="devotionImage" accept="image/*">
+            </div>
+            <div class="form-group">
+                <label>Devotional Title</label>
+                <input type="text" name="title" placeholder="Enter title..." required>
+            </div>
+            <div class="form-group">
+                <label>Subtitle / Theme Badge</label>
+                <input type="text" name="subtitle" placeholder="e.g., Walking in Faith">
+            </div>
+            <div class="form-group">
+                <label>Devotional Body Text / Blog Content</label>
+                <textarea name="description" placeholder="Write or paste your devotional text here..." style="height: 180px;" required></textarea>
+            </div>
+            <button type="submit" class="btn-submit">Save Devotional to Database</button>
+        </form>
+    </div>
+
+    <!-- 4. Book Form -->
+    <div id="book-form" class="form-section">
+        <form action="index.php" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="action" value="book">
+            <div class="form-group">
+                <label>Book Cover Image</label>
+                <input type="file" name="bookImage" accept="image/*" required>
+            </div>
+            <div class="form-group">
+                <label>PDF Document File</label>
+                <input type="file" name="bookPdf" accept="application/pdf" required>
+            </div>
+            <div class="form-group">
+                <label>Book Title</label>
+                <input type="text" name="title" placeholder="Enter book title..." required>
+            </div>
+            <div class="form-group">
+                <label>Description / Blurb</label>
+                <textarea name="description" placeholder="Enter overview description..." style="height: 140px;" required></textarea>
+            </div>
+            <button type="submit" class="btn-submit">Save Book to Database</button>
+        </form>
+    </div>
+
+</div>
+
+<script>
+    function switchTab(tabName, event) {
+        document.querySelectorAll('.form-section').forEach(sec => sec.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        document.getElementById(tabName + '-form').classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+</script>
 
 </body>
 </html>
