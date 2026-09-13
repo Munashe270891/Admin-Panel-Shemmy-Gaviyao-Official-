@@ -1,6 +1,11 @@
 <?php
-require_once '../config.php';
-require_once 'auth.php'; // Ensures only logged-in admins can access
+// Enable error reporting for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once 'config.php';
+require_once 'admin/auth.php'; // Corrected path to point inside the admin folder
 
 $message = $_GET['message'] ?? '';
 ?>
